@@ -1,15 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
-import time
 import datetime
 import os
 import sys
 
-# ================= 配置区 =================
-# PushPlus Token 从环境变量读取（GitHub Secrets 里已设置好的，不用改）
 PUSHPLUS_TOKEN = os.environ.get("PUSHPLUS_TOKEN", "")
 
-# 商品列表
 GOODS_LIST = [
     {
         "name": "RIIZE",
@@ -22,7 +18,6 @@ GOODS_LIST = [
         "status_file": "status/status_157626.txt"
     }
 ]
-# =========================================
 
 def get_stock_status(url):
     headers = {
@@ -33,12 +28,14 @@ def get_stock_status(url):
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
         page_text = soup.get_text()
+
         if "售罄" in page_text:
             return "SOLD_OUT"
-        elif "加入购物车" in page_text or "立即购买" in page_text:
-            return "IN_STOCK"
         else:
-            return "UNKNOWN"
+            if "加入购物车" in page_text or "立即购买" in page_text:
+                return "IN_STOCK"
+            else:
+                return "POSSIBLY_IN_STOCK"
     except Exception as e:
         print(f"[{datetime.datetime.now()}] 网络错误: {e}")
         return None
@@ -83,25 +80,26 @@ def main():
 
         status = get_stock_status(url)
         if status is None:
-            print(f"[{now}] {name} 网络错误，跳过本次检查")
+            print(f"[{now}] {name} 网络错误，跳过")
             continue
 
         last_status = load_last_status(file)
 
-        if status != last_status:
-            any_state_changed = True
-            if status == "IN_STOCK":
-                msg = f"🎉 <b>【{name}】已补货！请尽快下单</b><br><br>🔗 <a href='{url}'>点此直接购买</a><br>⏰ 时间：{now}"
-                send_wechat_push(f"Ktown4u 补货提醒 - {name}", msg)
-            elif status == "SOLD_OUT" and last_status is not None:
-                print(f"[{now}] {name} 再次售罄")
+        # 只要不是售罄，且状态与上次不同，就通知并标记变化
+        if status != "SOLD_OUT" and status != last_status:
+            msg = f"🎉 <b>【{name}】可能已补货！</b><br>检测状态：{status}<br><br>🔗 <a href='{url}'>点此直接购买</a><br>⏰ 时间：{now}"
+            send_wechat_push(f"Ktown4u 补货提醒 - {name}", msg)
             save_status(file, status)
+            any_state_changed = True
+        elif status == "SOLD_OUT" and last_status != "SOLD_OUT" and last_status is not None:
+            print(f"[{now}] {name} 再次售罄，更新记录")
+            save_status(file, status)
+            any_state_changed = True
         else:
             print(f"[{now}] {name} 状态无变化: {status}")
 
-    # 如果有任何状态变化，返回 1 来触发后面的自动提交
     if any_state_changed:
-        sys.exit(1)
+        sys.exit(1)  # 触发后续自动提交状态文件
 
 if __name__ == "__main__":
     main()
