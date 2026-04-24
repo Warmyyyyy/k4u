@@ -2,14 +2,14 @@ name: Ktown4u Stock Monitor
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # 每 10 分钟运行一次
+    - cron: '*/10 * * * *'   # 每10分钟一次
   workflow_dispatch:          # 允许手动触发
 
 jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # 允许推送状态文件
+      contents: write         # 允许提交状态文件
 
     steps:
       - name: 检出代码
@@ -28,9 +28,10 @@ jobs:
       - name: 运行监控脚本
         id: monitor
         env:
-          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          WXPUSHER_APP_TOKEN: ${{ secrets.WXPUSHER_APP_TOKEN }}
+          WXPUSHER_UID: ${{ secrets.WXPUSHER_UID }}
         run: python monitor.py
-        continue-on-error: true   # 允许脚本 exit(1) 后继续提交
+        continue-on-error: true
 
       - name: 状态变化则提交文件
         if: steps.monitor.outcome == 'failure'
