@@ -1,0 +1,41 @@
+name: Ktown4u Stock Monitor
+
+on:
+  schedule:
+    # 每 10 分钟运行一次（UTC 时间）
+    - cron: '*/10 * * * *'
+  workflow_dispatch:   # 允许手动触发测试
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      # 允许 workflow 推送代码，用于保存状态文件
+      contents: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install requests beautifulsoup4
+
+      - name: 运行监控脚本
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        run: python monitor.py
+        # 继续执行后续步骤，不会因为脚本 exit(1) 而终止
+        continue-on-error: true
+
+      - name: 如果状态有变化，提交状态文件
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📝 更新商品状态文件"
+          file_pattern: 'status/*.txt'
