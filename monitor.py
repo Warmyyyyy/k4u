@@ -6,8 +6,8 @@ import sys
 import time
 
 # 从 GitHub Secrets 读取 WxPusher 凭证
-APP_TOKEN = os.environ.get("AT_zQONIVlPr67fR1fFWiWHrQbUXa9IqtMi", "")
-MY_UID = os.environ.get("UID_MqDYhvcC8mbLGYzRVOyqbKDBS78f", "")
+APP_TOKEN = os.environ.get("WXPUSHER_APP_TOKEN", "")
+MY_UID = os.environ.get("WXPUSHER_UID", "")
 
 GOODS_LIST = [
     {
